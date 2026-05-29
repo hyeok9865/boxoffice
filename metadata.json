@@ -1,0 +1,6 @@
+{
+  "name": "Daily Box Office",
+  "description": "일일 영화 박스오피스 순위 및 상세 영화 정보를 실시간으로 조회하는 웹페이지입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
