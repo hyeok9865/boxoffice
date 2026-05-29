@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { X, Calendar, Clock, Film, Award, Users, Landmark, Tag } from "lucide-react";
+import { X, Calendar, Clock, Film, Award, Users, Landmark, Tag, Sparkles, Copy, Check } from "lucide-react";
 import { MovieInfo, MovieInfoResponse } from "../types";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface MovieDetailModalProps {
   movieCd: string | null;
@@ -13,10 +13,21 @@ export default function MovieDetailModal({ movieCd, onClose }: MovieDetailModalP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // AI Review Generator states
+  const [keywords, setKeywords] = useState<string[]>(["", "", ""]);
+  const [generatedReview, setGeneratedReview] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!movieCd) {
       setMovie(null);
       setError(null);
+      setKeywords(["", "", ""]);
+      setGeneratedReview(null);
+      setGenerationError(null);
+      setCopied(false);
       return;
     }
 
@@ -53,6 +64,64 @@ export default function MovieDetailModal({ movieCd, onClose }: MovieDetailModalP
   const formatDate = (dateStr: string) => {
     if (!dateStr || dateStr.length !== 8) return dateStr;
     return `${dateStr.substring(0, 4)}.${dateStr.substring(4, 6)}.${dateStr.substring(6, 8)}`;
+  };
+
+  // Keyword input handlers
+  const handleKeywordChange = (index: number, val: string) => {
+    const updated = [...keywords];
+    updated[index] = val.substring(0, 15); // limit len
+    setKeywords(updated);
+  };
+
+  // Generate AI Review
+  const generateAIReview = async () => {
+    if (!movie) return;
+
+    // Filter empty keywords
+    const activeKeywords = keywords.map(k => k.trim()).filter(Boolean);
+    if (activeKeywords.length === 0) {
+      setGenerationError("최소 1개 이상의 감상 키워드를 입력해주세요.");
+      return;
+    }
+
+    setGenerating(true);
+    setGenerationError(null);
+    setGeneratedReview(null);
+    setCopied(false);
+
+    try {
+      const genres = movie.genres.map(g => g.genreNm);
+      const response = await fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          movieNm: movie.movieNm,
+          genres,
+          keywords: activeKeywords,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "AI 감상평 생성 과정에서 서버 에러가 발생했습니다.");
+      }
+
+      const resData = await response.json();
+      setGeneratedReview(resData.review);
+    } catch (err: any) {
+      setGenerationError(err.message || "감상평 생성 도중 예기치 못한 오류가 발생했습니다.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Copy Review to Clipboard
+  const copyToClipboard = () => {
+    if (!generatedReview) return;
+    navigator.clipboard.writeText(generatedReview).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
@@ -189,7 +258,7 @@ export default function MovieDetailModal({ movieCd, onClose }: MovieDetailModalP
                 
                 <div className="grid sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-450 dark:text-slate-500 block text-xs font-semibold mb-1">감독</span>
+                    <span className="text-slate-455 dark:text-slate-500 block text-xs font-semibold mb-1">감독</span>
                     {movie.directors && movie.directors.length > 0 ? (
                       <div className="space-y-1">
                         {movie.directors.map((dir, idx) => (
@@ -204,7 +273,7 @@ export default function MovieDetailModal({ movieCd, onClose }: MovieDetailModalP
                   </div>
                   
                   <div>
-                    <span className="text-slate-450 dark:text-slate-500 block text-xs font-semibold mb-1">제작/배급사</span>
+                    <span className="text-slate-455 dark:text-slate-500 block text-xs font-semibold mb-1">제작/배급사</span>
                     {movie.companys && movie.companys.length > 0 ? (
                       <div className="space-y-1 text-slate-700 dark:text-slate-350 flex flex-wrap gap-x-2 gap-y-1 leading-relaxed text-xs">
                         {movie.companys.slice(0, 3).map((comp, idx) => (
@@ -259,6 +328,90 @@ export default function MovieDetailModal({ movieCd, onClose }: MovieDetailModalP
                 ) : (
                   <span className="text-slate-400 dark:text-slate-550 text-xs">등록된 배우 정보가 없습니다.</span>
                 )}
+              </div>
+
+              {/* AI review Generator section */}
+              <div id="ai-review-generator" className="p-5 md:p-6 rounded-2xl border border-sky-100 dark:border-sky-950/50 bg-sky-50/20 dark:bg-sky-950/10 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-sky-500 text-slate-950 flex items-center justify-center animate-pulse">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-bold text-base text-slate-900 dark:text-white flex items-center gap-1">
+                      AI 감상평 생성기
+                    </h3>
+                    <p className="text-[11px] text-slate-450 dark:text-slate-500">원하는 인상깊은 키워드 3개를 입력해 인공지능 감상평을 받아보세요.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2" id="keyword-inputs">
+                  {keywords.map((kw, i) => (
+                    <div key={i} className="relative">
+                      <input
+                        id={`keyword-input-${i}`}
+                        type="text"
+                        placeholder={`키워드 ${i + 1}`}
+                        value={kw}
+                        onChange={(e) => handleKeywordChange(i, e.target.value)}
+                        className="w-full text-center px-2 py-2 text-xs font-semibold rounded-xl border border-gray-250 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-100 focus:outline-hidden focus:ring-1.5 focus:ring-sky-550 transition-all"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {generationError && (
+                  <p className="text-xs text-rose-500 font-medium" id="review-gen-error">
+                    ⚠ {generationError}
+                  </p>
+                )}
+
+                <button
+                  id="generate-review-submit-btn"
+                  onClick={generateAIReview}
+                  disabled={generating}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-950 dark:bg-sky-500 hover:bg-slate-850 dark:hover:bg-sky-600 hover:scale-[1.01] text-white dark:text-slate-950 transition-all duration-250 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {generating ? "AI 평론 작성 중..." : "AI 가 감상평(평론) 작성하기"}
+                </button>
+
+                {/* Animated Review Display */}
+                <AnimatePresence mode="wait">
+                  {generatedReview && (
+                    <motion.div
+                      id="review-result-container"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="p-4 rounded-xl border border-sky-100/60 dark:border-sky-900/40 bg-white/70 dark:bg-slate-900/60 relative group-hover:shadow-xs transition-all"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono text-sky-600 dark:text-sky-400 font-bold uppercase tracking-wider">Gemini 가 지은 평론</span>
+                        <button
+                          id="copy-review-btn"
+                          onClick={copyToClipboard}
+                          className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer flex items-center gap-1 text-[10px]"
+                          title="감상평 복사"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              <span className="text-emerald-500 font-medium">복사됨</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>복사</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="font-sans text-xs md:text-sm leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-line font-medium italic">
+                        "{generatedReview}"
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
