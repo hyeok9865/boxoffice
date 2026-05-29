@@ -25,7 +25,7 @@ export default function MovieCard({ item, onClick, index }: MovieCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
       onClick={() => onClick(item.movieCd)}
-      className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-all duration-300 hover:border-sky-500/30 dark:hover:border-sky-500/30 cursor-pointer flex flex-col justify-between"
+      className="group relative overflow-hidden rounded-2xl border border-gray-200/70 dark:border-slate-800/80 bg-gray-100 dark:bg-slate-900 shadow-xs hover:shadow-md transition-all duration-300 hover:border-sky-500/30 dark:hover:border-sky-500/30 cursor-pointer flex flex-col justify-between"
     >
       {/* Decorative rank background number */}
       <div 

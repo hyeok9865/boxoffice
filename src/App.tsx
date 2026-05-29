@@ -136,7 +136,7 @@ export default function App() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {[...Array(8)].map((_, idx) => (
-                  <div key={idx} className="border border-gray-100 dark:border-slate-900 rounded-2xl p-5 bg-white dark:bg-slate-900 h-[220px] animate-pulse space-y-4">
+                  <div key={idx} className="border border-gray-200/70 dark:border-slate-900 rounded-2xl p-5 bg-gray-100 dark:bg-slate-900 h-[220px] animate-pulse space-y-4">
                     <div className="flex justify-between items-center">
                       <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-800" />
                       <div className="w-20 h-4 bg-gray-200 dark:bg-slate-800 rounded" />
